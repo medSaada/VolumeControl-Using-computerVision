@@ -1,8 +1,12 @@
 import cv2 as cv
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+
 from cvzone.HandTrackingModule import HandDetector
 import numpy
 import math
-from time import  sleep
+from time import sleep
 
 # from utilities import *
 
@@ -15,6 +19,20 @@ cap =cv.VideoCapture(0)
 # wCam, hCam = 100, 100
 # cap.set(3,wCam)
 # cap.set(4,hCam)
+"setting the volume"
+
+
+devices = AudioUtilities.GetSpeakers()
+interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL,None)
+volume = cast(interface, POINTER(IAudioEndpointVolume))
+# volume.GetMute()
+# volume.GetMasterVolumeLevel()
+volRange = volume.GetVolumeRange()
+minVol = volRange[0]
+maxVol = volRange[1]
+# print(f"{minVol},{maxVol}")
+
+
 #getting the video
 
 while True:
@@ -35,11 +53,23 @@ while True:
         for a, b in zip(UpFingerShrink, DownFingerShrink):
             projections.append(a - b)
         distance=pow(projections[0],2)+pow(projections[1],2)
-        print(distance)
+
+        if distance>30000:
+            distance=30000
+        elif distance<450:
+            distance=450
+        distance+=1
+        distance=((distance-450)/(30000-450))
+        # print(f"{int(distance)}")
         cv.circle(frame,tuple(UpFingerShrink),radius=5,color=(255,0,0),thickness=-1)
         cv.circle(frame, tuple(DownFingerShrink), radius=5, color=(255, 0, 0), thickness=-1)
-
-
+        #adapting the normalized value to the function
+        distance=distance*(0+64.25)-64.25
+        #volume.SetMasterVolumeLevel(distance, None)
+        if distance>0:
+            distance=0.0
+        print(distance)
+        volume.SetMasterVolumeLevel(distance, None)
 
 
     cv.imshow("Output", frame)
